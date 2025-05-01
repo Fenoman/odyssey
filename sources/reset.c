@@ -58,10 +58,10 @@ int od_reset(od_server_t *server)
 	 *
 	 * 3. Continue with (1)
 	 */
-	int wait_timeout = 1000;
+	int wait_timeout = 5000;
 	int wait_try = 0;
 	int wait_try_cancel = 0;
-	int wait_cancel_limit = 1;
+	int wait_cancel_limit = 2;
 	od_retcode_t rc = 0;
 	for (;;) {
 		/* check that msg synchronization is not broken*/
