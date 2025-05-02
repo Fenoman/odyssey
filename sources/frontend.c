@@ -1111,7 +1111,7 @@ static od_frontend_status_t od_frontend_remote_client(od_relay_t *relay,
 		   writing to the client immediately */
 		if (route->rule->pool->ignore_discardall)
 		{
-			/* ---------- 1. Very fast size guard ---------- */
+			/* 1. Very fast size guard */
 			/* FE Query header: 1 (type) + 4 (length) = 5 bytes */
 			const uint32_t MAX_RELEVANT = 5 + 15;          /* 20 bytes total */
             
@@ -1129,24 +1129,37 @@ static od_frontend_status_t od_frontend_remote_client(od_relay_t *relay,
 					od_debug(&instance->logger, "ignore_discardall",
 							 client, server,
 							 "query = \"%.*s\" (len=%u)", qlen, q, qlen);
-                    
-					/* ---------- 2. Trim leading / trailing whitespace / ; / \0 ---------- */
-					while (qlen && isspace((unsigned char)*q)) { ++q; --qlen; }
-					while (qlen && isspace((unsigned char)q[qlen-1])) { --qlen; }
-                    
-					if (qlen && q[qlen-1] == ';') {
+		
+					/* 2. Trim leading whitespace */
+					while (qlen && isspace((unsigned char)*q)) {
+						++q;
 						--qlen;
-						while (qlen && isspace((unsigned char)q[qlen-1])) { --qlen; }
 					}
-                    
-					if (qlen && q[qlen-1] == '\0')
-						--qlen;
-                    
+		
+					/* 3. Trim trailing whitespace, semicolon, and null terminator in one loop */
+					while (qlen) {
+						unsigned char ch = (unsigned char)q[qlen - 1];
+						if (ch == '\0' || isspace(ch)) {
+							--qlen;
+						}
+						else if (ch == ';') {
+							--qlen;
+							/* remove any whitespace that comes before the semicolon */
+							while (qlen && isspace((unsigned char)q[qlen - 1])) {
+								--qlen;
+							}
+							break;
+						}
+						else {
+							break;
+						}
+					}
+		
 					od_debug(&instance->logger, "ignore_discardall",
 							 client, server,
 							 "query after trim = \"%.*s\" (len=%u)", qlen, q, qlen);
-
-					/* ---------- 3. Compare with “DISCARD ALL” (11 chars) ---------- */
+		
+					/* 4. Compare with “DISCARD ALL” (11 chars) */
 					if (qlen == 11)     /* any other length → skip */
 					{
 						od_debug(&instance->logger, "ignore_discardall",
@@ -1164,8 +1177,8 @@ static od_frontend_status_t od_frontend_remote_client(od_relay_t *relay,
 							od_debug(&instance->logger, "ignore_discardall",
 									 client, server,
 									 "intercepted – skipped");
-
-							/* ---- 4. Create CommandComplete + ReadyForQuery ------------- */
+									
+							/* 5. Create CommandComplete + ReadyForQuery */
 							machine_msg_t *stream = machine_msg_create(0);
 							if (!stream) return OD_EOOM;
 
